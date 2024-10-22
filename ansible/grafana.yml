@@ -1,0 +1,39 @@
+- hosts: grafana
+  remote_user: thrsnknwldgthtsntpwr
+  become: yes
+  tasks:
+
+  - name: Update repositories cache and install "adduser, libfontconfig1, musl" package
+    ansible.builtin.apt:
+      name: "{{item}}"
+      state: latest
+      update_cache: yes
+    loop:
+      - adduser
+      - libfontconfig1
+      - musl
+
+  - name: download grafana
+    ansible.builtin.get_url:
+      url: https://dl.grafana.com/oss/release/grafana_11.2.2_amd64.deb
+      dest: /tmp/
+      mode: '0440'
+
+  - name: install grafana
+    command: dpkg -i /tmp/grafana_11.2.2_amd64.deb
+
+
+  - name: Just force systemd to reread configs (2.4 and above)
+    ansible.builtin.systemd:
+      daemon_reload: true
+
+  - name: enable grafana service
+    ansible.builtin.systemd:
+      name: grafana-server.service
+      enabled: true
+      masked: no
+
+  - name: make sure grafana is running
+    ansible.builtin.systemd:
+      state: started
+      name: grafana-server.service

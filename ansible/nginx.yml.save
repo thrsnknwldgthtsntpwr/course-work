@@ -1,0 +1,49 @@
+- hosts: nginx
+  remote_user: thrsnknwldgthtsntpwr
+  become: yes
+  tasks:
+
+  - name: create /etc/prometheus/node_exporter
+    file: path=/etc/prometheus/node_exporter state=directory
+  - name: copy node_exporter binary
+    copy: src=node_exporter-files/node_exporter dest=/etc/prometheus/node_exporter mode=777
+  - name: copy node_exporter.service
+    copy: src=node_exporter-files/node_exporter.service dest=/etc/systemd/system/node_exporter.service mode=777
+  - name: reloading systemd daemons
+    command:
+      systemctl daemon-reload
+  - name: enabling node_exporter autostart
+    command:
+      systemctl enable node_exporter.service
+  - name: starting node_exporter service
+    command:
+      systemctl start node_exporter.service
+
+  - name: copy nginxlog-exporter
+    copy: src=nginx-log-exporter-files/prometheus-nginxlog-exporter dest=/usr/bin/prometheus-nginxlog-exporter mode=777
+
+  - name: copy nginxlog-exporter.service
+    copy: src=nginx-log-exporter-files/nginxlog-exporter.service dest=/etc/systemd/system/nginxlog-exporter.service mode=777
+
+  - name: reloading systemd daemons
+    command:
+      systemctl daemon-reload
+
+  - name: enabling nginxlog-exporter autostart
+    command:
+      systemctl enable nginxlog-exporter.service
+
+  - name: update repos
+    command:
+      apt update
+  - name: install nginx
+    command:
+      apt install nginx -y
+  - name: nginx waiting for nginx install by cloudinit
+    shell:
+      cmd: while [ -n $(dpkg -l nginx 2>/dev/null) ]; do sleep 10; done
+
+  - name: write hostname using jinja2
+    ansible.builtin.template:
+      src: j2-template/index.j2
+      dest: /var/www/html/index.html

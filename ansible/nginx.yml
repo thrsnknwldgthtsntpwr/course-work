@@ -1,0 +1,95 @@
+- hosts: nginx
+  remote_user: thrsnknwldgthtsntpwr
+  become: yes
+  tasks:
+
+  - name: create /etc/prometheus/node_exporter
+    file: path=/etc/prometheus/node_exporter state=directory
+  - name: copy node_exporter binary
+    copy: src=node_exporter-files/node_exporter dest=/etc/prometheus/node_exporter mode=777
+  - name: copy node_exporter.service
+    copy: src=node_exporter-files/node_exporter.service dest=/etc/systemd/system/node_exporter.service mode=777
+  - name: reloading systemd daemons
+    command:
+      systemctl daemon-reload
+
+
+  - name: Enable node_exporter
+    ansible.builtin.systemd:
+      name: node_exporter.service
+      enabled: true
+      masked: no
+
+  - name: Make sure node_exporter unit is running
+    ansible.builtin.systemd:
+      state: started
+      name: node_exporter.service
+
+  - name: copy nginxlog-exporter
+    copy: src=nginx-log-exporter-files/prometheus-nginxlog-exporter dest=/usr/bin/prometheus-nginxlog-exporter mode=777
+
+  - name: copy nginxlog-exporter.service
+    copy: src=nginx-log-exporter-files/nginxlog-exporter.service dest=/etc/systemd/system/nginxlog-exporter.service mode=777
+
+  - name: Just force systemd to reread configs (2.4 and above)
+    ansible.builtin.systemd:
+      daemon_reload: true
+
+  - name: Enable nginxlog-exporter
+    ansible.builtin.systemd:
+      name: node_exporter.service
+      enabled: true
+      masked: no
+
+  - name: update repos
+    command:
+      apt update -y
+  - name: install nginx
+    command:
+      apt install nginx -y
+  - name: nginx waiting for nginx install by cloudinit
+    shell:
+      cmd: while [ -n $(dpkg -l nginx 2>/dev/null) ]; do sleep 10; done
+
+  - name: write hostname using jinja2
+    ansible.builtin.template:
+      src: j2-template/index.j2
+      dest: /var/www/html/index.html
+
+  - name: nginxlog-exporter cfg using jinja2
+    ansible.builtin.template:
+      src: j2-template/nginxlog_exporter.j2
+      dest: /etc/prometheus/nginxlog_exporter.yml
+
+  - name: delete nginx default conf
+    ansible.builtin.file:
+      path: /etc/nginx/nginx.conf
+      state: absent
+
+  - name: nginx config copy
+    copy: src=nginx-files/nginx.conf dest=/etc/nginx/nginx.conf
+
+  - name: Make sure nginxlog-exporter is running
+    ansible.builtin.systemd:
+      state: started
+      name: nginxlog-exporter.service
+
+
+  - name: copying filebeat
+    copy: src=/tmp/distrs/filebeat-8.2.2-amd64.deb dest=/tmp/filebeat-8.2.2-amd64.deb
+
+  - name: installing filebeat
+    apt:
+      deb: /tmp/filebeat-8.2.2-amd64.deb
+      state: present
+
+  - name: Enable filebeat
+    ansible.builtin.systemd:
+      name: filebeat.service
+      enabled: true
+      masked: no
+
+  - name: Make sure filebeat is running
+    ansible.builtin.systemd:
+      state: started
+      name: filebeat.service

@@ -1,0 +1,10 @@
+[Unit]
+Description=Node Exporter (FOPS-22)
+After=network.target
+[Service]
+User=root
+Group=root
+Type=simple
+ExecStart=/etc/prometheus/node_exporter/node_exporter
+[Install]
+WantedBy=multi-user.target

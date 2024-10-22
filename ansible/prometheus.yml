@@ -1,0 +1,34 @@
+- hosts: prometheus
+  remote_user: thrsnknwldgthtsntpwr
+  become: yes
+  tasks:
+  - name: сreate /etc/prometheus
+    file: path=/etc/prometheus state=directory
+  - name: create /var/lib/prometheus
+    file: path=/var/lib/prometheus state=directory
+  - name: copy prometheus binary
+    copy: src=prometheus-files/prometheus dest=/usr/local/bin mode=777
+  - name: copy prometheus.service
+    copy: src=prometheus-files/prometheus.service dest=/etc/systemd/system/prometheus.service mode=777
+  - name: copy promtool binary
+    copy: src=prometheus-files/promtool dest=/usr/local/bin
+  - name: copy console libraries
+    copy: src=prometheus-files/console_libraries dest=/etc/prometheus/
+  - name: copy prometheus.yml
+    copy: src=prometheus-files/prometheus.yml dest=/etc/prometheus/
+
+
+  - name: Just force systemd to reread configs (2.4 and above)
+    ansible.builtin.systemd:
+      daemon_reload: true
+
+  - name: enable prometheus service
+    ansible.builtin.systemd:
+      name: prometheus
+      enabled: true
+      masked: no
+
+  - name: make sure prometheus is running
+    ansible.builtin.systemd:
+      state: started
+      name: prometheus.service

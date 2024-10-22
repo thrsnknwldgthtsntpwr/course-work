@@ -1,0 +1,62 @@
+- hosts: elk
+  remote_user: thrsnknwldgthtsntpwr
+  become: yes
+  tasks:
+  - name: elastic delete unattended-upgrades
+    command:
+      apt purge unattended-upgrades -y
+  - name: uploading elasticsearch
+    copy:
+      src: /tmp/distrs/elasticsearch-8.2.2-amd64.deb
+      dest: /tmp
+  - name: installing elasticsearch
+    apt:
+      deb: /tmp/elasticsearch-8.2.2-amd64.deb
+      state: present
+
+  - name: create /etc/systemd/system/elasticsearch.service.d
+    file: path=/etc/systemd/system/elasticsearch.service.d state=directory
+
+  - name: uploading startup-timeout.conf
+    copy:
+      src: elk-files/startup-timeout.conf
+      dest: /etc/systemd/system/elasticsearch.service.d
+
+  - name: Just force systemd to reread configs (2.4 and above)
+    ansible.builtin.systemd:
+      daemon_reload: true
+
+  - name: enable elasticsearc service
+    ansible.builtin.systemd:
+      name: elasticsearch
+      enabled: true
+      masked: no
+
+  - name: make sure elasticsearch is running
+    ansible.builtin.systemd:
+      state: started
+      name: elasticsearch.service
+
+  - name: kibana uploading kibana
+    copy:
+      src: /tmp/distrs/kibana-8.2.2-amd64.deb
+      dest: /tmp
+  - name: installing kibana
+    apt:
+      deb: /tmp/kibana-8.2.2-amd64.deb
+      state: present
+
+  - name: Just force systemd to reread configs (2.4 and above)
+    ansible.builtin.systemd:
+      daemon_reload: true
+
+  - name: enable kibana service
+    ansible.builtin.systemd:
+      name: kibana
+      enabled: true
+      masked: no
+
+  - name: make sure kibana is running
+    ansible.builtin.systemd:
+      state: started
+      name: kibana.service
